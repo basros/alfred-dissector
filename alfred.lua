@@ -30,7 +30,7 @@ function p_alfred.dissector (buf, pkt, root)
   pkt.cols.info = "Type: "
   pkt.cols.info:append (types[buf(0,1):uint()])
  
-  subtree = root:add(p_alfred, buf(0))
+  local subtree = root:add(p_alfred, buf(0))
 --- default TLV-Header / Master Announcement
   subtree:add(f_type, buf(0,1))
   subtree:add(f_version, buf(1,1))
@@ -43,15 +43,13 @@ function p_alfred.dissector (buf, pkt, root)
     subtree:add(f_factlength, buf(16,2)):append_text(" Bytes")
     subtree:add(f_data, buf(18))
     pkt.cols.info:append ("\t\t\t Tx-ID: " .. (tostring(buf(4,2))))
-  end
 --- Request Data
-  if buf(0,1):uint() == 2 then
+  elseif buf(0,1):uint() == 2 then
     subtree:add(f_fact, buf(4,1))
     subtree:add(f_txid, buf(5,2))
     pkt.cols.info:append ("\t\t Tx-ID: " .. (tostring(buf(5,2))))
-  end
 --- Finished Transaction 
-  if buf(0,1):uint() == 3 then
+  elseif buf(0,1):uint() == 3 then
     parse_transaction_mgmt (buf, pkt, subtree)
   end
   
