@@ -11,7 +11,7 @@ local f_length = ProtoField.uint16("alfred.length", "Length", base.DEC)
 local f_txid = ProtoField.uint16("alfred.txid", "Transaction ID", base.HEX)
 local f_counter = ProtoField.uint16("alfred.counter", "Number of packets", base.DEC)
 local f_mac = ProtoField.ether("alfred.ether", "Source MAC Address")
-local f_fact = ProtoField.uint8("alfred.fact", "Requested Fact", base.DEC)
+local f_fact = ProtoField.uint8("alfred.fact", "Fact", base.DEC)
 local f_factlength = ProtoField.uint8("alfred.factlength", "Length of Fact", base.DEC)
 local f_data = ProtoField.string("alfred.data", "Data", FT_STRING)
 
@@ -38,11 +38,21 @@ function p_alfred.dissector (buf, pkt, root)
 --- Push Data
   if buf(0,1):uint() == 0 then
     parse_transaction_mgmt (buf, pkt, subtree)
-    subtree:add(f_mac, buf(8,6))
-    subtree:add(f_fact, buf(14,1))
-    subtree:add(f_factlength, buf(16,2)):append_text(" Bytes")
-    subtree:add(f_data, buf(18))
-    pkt.cols.info:append ("\t\t\t Tx-ID: " .. (tostring(buf(4,2))))
+    local offset = 8
+    local length = buf(2,2):uint()
+    while offset < length do
+      local fact = subtree:add(f_fact, buf(offset+6,1)):append_text(" from " .. buf(offset,6))
+      local factlength = buf(offset+8,2):uint()
+      fact:add(f_mac, buf(offset,6))
+      fact:add(f_version, buf(offset+7,1))
+      fact:add(f_factlength, factlength):append_text(" Bytes")
+      fact:add(f_data, buf(offset+10))
+      offset = offset + factlength + 10
+      -- prevent infinite loop
+      if factlength == 0 then
+        break
+      end
+    end
 --- Request Data
   elseif buf(0,1):uint() == 2 then
     subtree:add(f_fact, buf(4,1))
