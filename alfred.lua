@@ -16,6 +16,12 @@ local f_factlength = ProtoField.uint8("alfred.factlength", "Length of Fact", bas
 local f_data = ProtoField.string("alfred.data", "Data", FT_STRING)
 
 p_alfred.fields = {f_type, f_version, f_length, f_txid, f_counter, f_mac, f_fact, f_factlength, f_data}
+
+local function parse_transaction_mgmt (buf, pkt, subtree)
+  subtree:add(f_txid, buf(4,2))
+  subtree:add(f_counter, buf(6,2))
+  pkt.cols.info:append ("\t\t\t Tx-ID: " .. (tostring(buf(4,2))))
+end
  
 function p_alfred.dissector (buf, pkt, root)
   -- validate packet length is adequate, otherwise quit
@@ -31,7 +37,7 @@ function p_alfred.dissector (buf, pkt, root)
   subtree:add(f_length, buf(2,2)):append_text(" Bytes")
 --- Push Data
   if buf(0,1):uint() == 0 then
-    subtree:add(f_txid, buf(4,2))
+    parse_transaction_mgmt (buf, pkt, subtree)
     subtree:add(f_mac, buf(8,6))
     subtree:add(f_fact, buf(14,1))
     subtree:add(f_factlength, buf(16,2)):append_text(" Bytes")
@@ -46,9 +52,7 @@ function p_alfred.dissector (buf, pkt, root)
   end
 --- Finished Transaction 
   if buf(0,1):uint() == 3 then
-    subtree:add(f_txid, buf(4,2))
-    subtree:add(f_counter, buf(6,2))
-    pkt.cols.info:append ("\t Tx-ID: " .. (tostring(buf(4,2))))
+    parse_transaction_mgmt (buf, pkt, subtree)
   end
   
 end
